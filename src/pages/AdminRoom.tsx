@@ -1,12 +1,12 @@
-import { FormEvent, useState } from "react";
 import { useHistory, useParams } from "react-router-dom";
 import logoImg from "../assets/logo.svg";
 import deleteImg from "../assets/delete.svg";
+import checkImg from "../assets/check.svg";
+import answerImg from "../assets/answer.svg";
 import { Button } from "../components/Button";
 import { Question } from "../components/Question";
 
 import { RoomCode } from "../components/RoomCode";
-import { useAuth } from "../hooks/useAuth";
 import { useRoom } from "../hooks/useRoom";
 import { database } from "../services/firebase";
 
@@ -17,33 +17,11 @@ type RoomParams = {
 };
 
 export function AdminRoom() {
-  const { user } = useAuth();
   const history = useHistory();
   const params = useParams<RoomParams>();
   const roomId = params.id;
-  const [newQuestion, setNewQuestion] = useState("");
   const { questions, title } = useRoom(roomId);
 
-  async function handlSendQuestion(event: FormEvent) {
-    event.preventDefault();
-    if (newQuestion.trim() === "") {
-      return;
-    }
-    if (!user) {
-      throw new Error("You must be logged in");
-    }
-    const question = {
-      content: newQuestion,
-      author: {
-        name: user.name,
-        avatar: user.avatar,
-      },
-      isHighLighted: false,
-      isAnswered: false,
-    };
-    await database.ref(`rooms/${params.id}/questions`).push(question);
-    setNewQuestion("");
-  }
   async function handleDeleteQuestion(questionId: string) {
     if (window.confirm("Tem certeza que deseja excluir essa pergunta?")) {
       await database.ref(`rooms/${roomId}/questions/${questionId}`).remove();
@@ -54,6 +32,16 @@ export function AdminRoom() {
       endedAt: new Date(),
     });
     history.push("/");
+  }
+  async function handleCheckQuestionAnswered(questionId: string) {
+    await database.ref(`rooms/${roomId}/questions/${questionId}`).update({
+      isAnswered: true,
+    });
+  }
+  async function handlHighLightQuestion(questionId: string) {
+    await database.ref(`rooms/${roomId}/questions/${questionId}`).update({
+      isHighLighted: true,
+    });
   }
   return (
     <div id="page-room">
@@ -80,7 +68,33 @@ export function AdminRoom() {
                 key={question.id}
                 content={question.content}
                 author={question.author}
+                isAnswered={question.isAnswered}
+                isHighLighted={question.isHighLighted}
               >
+                {" "}
+                {!question.isAnswered && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCheckQuestionAnswered(question.id);
+                      }}
+                    >
+                      <img
+                        src={checkImg}
+                        alt="Marcar pergunta como respondida"
+                      />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handlHighLightQuestion(question.id);
+                      }}
+                    >
+                      <img src={answerImg} alt="dar destaque na pergunta" />
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
                   onClick={() => {
